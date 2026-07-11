@@ -30,6 +30,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
   final TextEditingController _controller = TextEditingController(text: _qText);
   final FocusNode _focusNode = FocusNode();
+  final GlobalKey _textFieldKey = GlobalKey();
 
   @override
   void dispose() {
@@ -72,6 +73,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
   Widget _buildSharedTextField(TextStyle textStyle) {
     return TextField(
+      key: _textFieldKey,
       controller: _controller,
       focusNode: _focusNode,
       expands: true,
