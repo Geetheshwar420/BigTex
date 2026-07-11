@@ -1,0 +1,25 @@
+name: big_text
+description: A minimal single-file Flutter app demonstrating pinch-to-zoom text.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=2.17.0 <4.0.0'
+  flutter: '>=2.10.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_launcher_icons: ^0.11.0
+
+flutter:
+  uses-material-design: true
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "BigTex Icon.jpg"
