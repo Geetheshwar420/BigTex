@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:math' as math;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -25,18 +26,10 @@ class BigTextHomePage extends StatefulWidget {
 }
 
 class _BigTextHomePageState extends State<BigTextHomePage> {
-  static const String _initialText = 'Type here...';
+  static const String _qText = 'Type here...';
 
-  final TextEditingController _controller = TextEditingController(text: _initialText);
+  final TextEditingController _controller = TextEditingController(text: _qText);
   final FocusNode _focusNode = FocusNode();
-
-  double _fontSize = 100.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _recalculateFontSize(_controller.text);
-  }
 
   @override
   void dispose() {
@@ -45,11 +38,27 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     super.dispose();
   }
 
-  void _recalculateFontSize(String text) {
+  double _fontSizeForText(String text) {
+    if (text.isEmpty || text == _qText) {
+      return 100.0;
+    }
     final double size = 100.0 - 1.5 * text.length;
+    return math.max(20.0, size);
+  }
+
+  void _handleTextChanged(String text) {
     setState(() {
-      _fontSize = size < 20.0 ? 20.0 : size;
+      // Rebuild so the style recomputes from the current controller text.
     });
+  }
+
+  void _handleTapToClear() {
+    // Evaluates case-insensitively.
+    if (_controller.text.toLowerCase() == _qText.toLowerCase()) {
+      _controller.clear();
+      // Force a UI rebuild so the font size updates immediately.
+      _handleTextChanged('');
+    }
   }
 
   void _unfocusKeyboard() {
@@ -58,18 +67,37 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
   void _handleFullScreenTap() {
     _focusNode.requestFocus();
-    if (_controller.text.toLowerCase() == _initialText.toLowerCase()) {
-      _controller.clear();
-      _recalculateFontSize('');
-    }
+    _handleTapToClear(); // Clears text if they tap the outer edges.
+  }
+
+  Widget _buildSharedTextField(TextStyle textStyle) {
+    return TextField(
+      controller: _controller,
+      focusNode: _focusNode,
+      expands: true,
+      maxLines: null,
+      minLines: null,
+      keyboardType: TextInputType.multiline,
+      textAlign: TextAlign.center,
+      textAlignVertical: TextAlignVertical.center,
+      onTap: _handleTapToClear,
+      decoration: const InputDecoration(
+        border: InputBorder.none,
+        isCollapsed: true,
+        contentPadding: EdgeInsets.zero,
+      ),
+      style: textStyle,
+      onChanged: _handleTextChanged,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final bool keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+    final double fontSize = _fontSizeForText(_controller.text);
 
     final TextStyle textStyle = TextStyle(
-      fontSize: _fontSize,
+      fontSize: fontSize,
       fontWeight: FontWeight.bold,
       color: const Color(0xFF333333),
       letterSpacing: -2.0,
@@ -85,23 +113,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
             behavior: HitTestBehavior.opaque,
             onTap: _handleFullScreenTap,
             child: SizedBox.expand(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                expands: true,
-                maxLines: null,
-                minLines: null,
-                keyboardType: TextInputType.multiline,
-                textAlign: TextAlign.center,
-                textAlignVertical: TextAlignVertical.center,
-                decoration: const InputDecoration(
-                  border: InputBorder.none,
-                  isCollapsed: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                style: textStyle,
-                onChanged: (v) => _recalculateFontSize(v),
-              ),
+              child: _buildSharedTextField(textStyle),
             ),
           ),
         ),
@@ -140,23 +152,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12.0),
                     ),
-                    child: TextField(
-                      controller: _controller,
-                      focusNode: _focusNode,
-                      expands: true,
-                      maxLines: null,
-                      minLines: null,
-                      keyboardType: TextInputType.multiline,
-                      textAlign: TextAlign.center,
-                      textAlignVertical: TextAlignVertical.center,
-                      decoration: const InputDecoration(
-                        border: InputBorder.none,
-                        isCollapsed: true,
-                        contentPadding: EdgeInsets.zero,
-                      ),
-                      style: textStyle,
-                      onChanged: (v) => _recalculateFontSize(v),
-                    ),
+                    child: _buildSharedTextField(textStyle),
                   ),
                 ),
               ),
