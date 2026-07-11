@@ -23,10 +23,10 @@ Notes:
 iOS build instructions (macOS required)
 
 1. Prerequisites:
-	- A macOS machine with Xcode installed and command-line tools configured.
-	- An Apple Developer account and a provisioning profile or automatic signing set up in Xcode.
+   - A macOS machine with Xcode installed and command-line tools configured.
+   - An Apple Developer account and a provisioning profile or automatic signing set up in Xcode.
 
-2. Basic automated build (recommended when signing is configured):
+1. Basic automated build (recommended when signing is configured):
 
 ```bash
 flutter pub get
@@ -42,8 +42,8 @@ open ios/Runner.xcworkspace
 # In Xcode: select a Generic iOS Device, then Product → Archive, then Distribute App
 ```
 
-4. Notes on signing:
-	- Open `ios/Runner.xcworkspace` in Xcode, select the Runner target, and set the Team under Signing & Capabilities.
-	- If you use the automated `flutter build ipa` flow, edit `ios/export_options.plist` and set `method` and `teamID` appropriately.
+1. Notes on signing:
+   - Open `ios/Runner.xcworkspace` in Xcode, select the Runner target, and set the Team under Signing & Capabilities.
+   - If you use the automated `flutter build ipa` flow, edit `ios/export_options.plist` and set `method` and `teamID` appropriately.
 
 If you want, provide your Apple Team ID and desired export `method` and I can pre-fill `ios/export_options.plist` accordingly. I cannot produce an iOS binary from this Windows host — you must run the build commands on macOS or provide macOS access.
