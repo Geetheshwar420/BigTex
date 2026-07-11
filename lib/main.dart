@@ -1,20 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'dart:io' show Platform;
-
-const MethodChannel _rotationChannel = MethodChannel('big_text/rotation');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Request all orientations so the app may rotate freely.
-  // Note: the system-wide orientation lock may still prevent rotation on some devices.
-  await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-    DeviceOrientation.landscapeLeft,
-    DeviceOrientation.landscapeRight,
-  ]);
-
   runApp(const BigTextApp());
 }
 
@@ -38,16 +25,18 @@ class BigTextHomePage extends StatefulWidget {
 }
 
 class _BigTextHomePageState extends State<BigTextHomePage> {
-  static const double _defaultFontSize = 70.0;
-  static const double _minFontSize = 30.0;
-  static const double _maxFontSize = 200.0;
   static const String _initialText = 'Type here...';
 
   final TextEditingController _controller = TextEditingController(text: _initialText);
   final FocusNode _focusNode = FocusNode();
 
-  double _fontSize = _defaultFontSize;
-  double _baseFontSize = _defaultFontSize;
+  double _fontSize = 100.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _recalculateFontSize(_controller.text);
+  }
 
   @override
   void dispose() {
@@ -56,49 +45,101 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     super.dispose();
   }
 
-  void _handleTap() {
+  void _recalculateFontSize(String text) {
+    final double size = 100.0 - 1.5 * text.length;
+    setState(() {
+      _fontSize = size < 20.0 ? 20.0 : size;
+    });
+  }
+
+  void _unfocusKeyboard() {
+    _focusNode.unfocus();
+  }
+
+  void _handleFullScreenTap() {
     _focusNode.requestFocus();
     if (_controller.text.toLowerCase() == _initialText.toLowerCase()) {
       _controller.clear();
-    }
-  }
-
-  void _handleScaleStart(ScaleStartDetails details) {
-    _baseFontSize = _fontSize;
-  }
-
-  void _handleScaleUpdate(ScaleUpdateDetails details) {
-    final double nextSize = (_baseFontSize * details.scale).clamp(_minFontSize, _maxFontSize);
-    if (nextSize != _fontSize) {
-      setState(() {
-        _fontSize = nextSize;
-      });
+      _recalculateFontSize('');
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
+
     final TextStyle textStyle = TextStyle(
       fontSize: _fontSize,
       fontWeight: FontWeight.bold,
       color: const Color(0xFF333333),
-      letterSpacing: -5.0,
-      height: 0.8,
+      letterSpacing: -2.0,
+      height: 1.0,
     );
+
+    if (!keyboardVisible) {
+      // Full-Screen Mode (Keyboard Closed)
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _handleFullScreenTap,
+            child: SizedBox.expand(
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                expands: true,
+                maxLines: null,
+                minLines: null,
+                keyboardType: TextInputType.multiline,
+                textAlign: TextAlign.center,
+                textAlignVertical: TextAlignVertical.center,
+                decoration: const InputDecoration(
+                  border: InputBorder.none,
+                  isCollapsed: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                style: textStyle,
+                onChanged: (v) => _recalculateFontSize(v),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Editing Mode (Keyboard Open)
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: const Color(0xFF1E1E1E),
       body: SafeArea(
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: _handleTap,
-          onScaleStart: _handleScaleStart,
-          onScaleUpdate: _handleScaleUpdate,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final double keyboardInset = MediaQuery.of(context).viewInsets.bottom;
-              return Stack(
+        child: Column(
+          children: <Widget>[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
-                  Positioned.fill(
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: _unfocusKeyboard,
+                  ),
+                  ElevatedButton(
+                    onPressed: _unfocusKeyboard,
+                    child: const Text('Done'),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Center(
+                child: AspectRatio(
+                  aspectRatio: 9 / 16,
+                  child: Container(
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
                     child: TextField(
                       controller: _controller,
                       focusNode: _focusNode,
@@ -106,116 +147,23 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
                       maxLines: null,
                       minLines: null,
                       keyboardType: TextInputType.multiline,
-                      textAlign: TextAlign.left,
-                      textAlignVertical: TextAlignVertical.top,
+                      textAlign: TextAlign.center,
+                      textAlignVertical: TextAlignVertical.center,
                       decoration: const InputDecoration(
                         border: InputBorder.none,
                         isCollapsed: true,
                         contentPadding: EdgeInsets.zero,
                       ),
                       style: textStyle,
+                      onChanged: (v) => _recalculateFontSize(v),
                     ),
                   ),
-                  // Done button positioned above the keyboard, bottom-right
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 180),
-                    right: 16,
-                    bottom: keyboardInset + 12,
-                    child: SafeArea(
-                      top: false,
-                      left: false,
-                      right: false,
-                      bottom: true,
-                      child: GestureDetector(
-                        onTap: () {
-                          _focusNode.unfocus();
-                        },
-                        child: Material(
-                          elevation: 2,
-                          color: Colors.white,
-                          shape: const StadiumBorder(),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
-                            child: const Text(
-                              'Done',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.black87,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Rotation helper button above keyboard, bottom-left
-                  AnimatedPositioned(
-                    duration: const Duration(milliseconds: 180),
-                    left: 16,
-                    bottom: keyboardInset + 12,
-                    child: SafeArea(
-                      top: false,
-                      left: true,
-                      right: false,
-                      bottom: true,
-                      child: GestureDetector(
-                        onTap: _showRotationHelp,
-                        child: Material(
-                          elevation: 2,
-                          color: Colors.white,
-                          shape: const CircleBorder(),
-                          child: Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: Icon(
-                              Icons.rotate_right,
-                              size: 20,
-                              color: Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
-    );
-  }
-
-  Future<void> _showRotationHelp() async {
-    // Show instructions; on Android, offer to open display settings.
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Rotation Help'),
-          content: Text(Platform.isAndroid
-              ? 'If your screen does not rotate, please enable Auto-rotate in system Settings.\n\nTap "Open Settings" to jump to Display settings.'
-              : 'If your screen does not rotate, please disable the Rotation Lock from Control Center (tap the lock with a circular arrow).'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-            if (Platform.isAndroid)
-              TextButton(
-                onPressed: () async {
-                  Navigator.of(context).pop();
-                  try {
-                    await _rotationChannel.invokeMethod<bool>('openAutoRotateSettings');
-                  } catch (_) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open settings')));
-                  }
-                },
-                child: const Text('Open Settings'),
-              ),
-          ],
-        );
-      },
     );
   }
 }
