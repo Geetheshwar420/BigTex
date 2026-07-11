@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
 
 Future<void> main() async {
@@ -75,31 +76,87 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     }
   }
 
+  bool _isLandscape(BuildContext context) {
+    return MediaQuery.of(context).orientation == Orientation.landscape;
+  }
+
+  Future<void> _promptPortraitMode() async {
+    if (!mounted) {
+      return;
+    }
+
+    final bool shouldRotate = await showDialog<bool>(
+          context: context,
+          builder: (BuildContext dialogContext) {
+            return AlertDialog(
+              title: const Text('Rotate to portrait?'),
+              content: const Text('Text editing is available in portrait mode. Switch now to edit.'),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  child: const Text('Rotate'),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+
+    if (!shouldRotate || !mounted) {
+      return;
+    }
+
+    await SystemChrome.setPreferredOrientations(<DeviceOrientation>[
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
+
+    if (!mounted) {
+      return;
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
+    });
+  }
+
   void _unfocusKeyboard() {
     _focusNode.unfocus();
   }
 
-  void _handleFullScreenTap() {
+  void _handleFullScreenTap(bool isLandscape) {
+    if (isLandscape) {
+      return;
+    }
     _focusNode.requestFocus();
     _handleTapToClear(); // Clears text if they tap the outer edges.
   }
 
-  Widget _buildSharedTextField(TextStyle textStyle) {
+  Widget _buildSharedTextField(TextStyle textStyle, {required bool isLandscape}) {
     return GestureDetector(
       behavior: HitTestBehavior.translucent,
       onScaleStart: _handleScaleStart,
-      onScaleUpdate: _handleScaleUpdate,
+      onScaleUpdate: isLandscape ? null : _handleScaleUpdate,
       child: TextField(
         key: _textFieldKey,
         controller: _controller,
         focusNode: _focusNode,
+        canRequestFocus: !isLandscape,
+        readOnly: isLandscape,
+        showCursor: !isLandscape,
         expands: true,
         maxLines: null,
         minLines: null,
         keyboardType: TextInputType.multiline,
         textAlign: TextAlign.center,
         textAlignVertical: TextAlignVertical.center,
-        onTap: _handleTapToClear,
+        onTap: isLandscape ? null : _handleTapToClear,
         decoration: const InputDecoration(
           border: InputBorder.none,
           isCollapsed: true,
@@ -113,6 +170,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isLandscape = _isLandscape(context);
     final bool keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final double fontSize = _fontSizeForText(_controller.text) * _pinchScale;
 
@@ -124,6 +182,28 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
       height: 1.0,
     );
 
+    if (isLandscape) {
+      return Scaffold(
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _promptPortraitMode,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                child: Text(
+                  _controller.text,
+                  textAlign: TextAlign.center,
+                  style: textStyle,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
     if (!keyboardVisible) {
       // Full-Screen Mode (Keyboard Closed)
       return Scaffold(
@@ -131,9 +211,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
         body: SafeArea(
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _handleFullScreenTap,
+            onTap: () => _handleFullScreenTap(false),
             child: SizedBox.expand(
-              child: _buildSharedTextField(textStyle),
+              child: _buildSharedTextField(textStyle, isLandscape: false),
             ),
           ),
         ),
@@ -172,7 +252,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12.0),
                     ),
-                    child: _buildSharedTextField(textStyle),
+                    child: _buildSharedTextField(textStyle, isLandscape: false),
                   ),
                 ),
               ),
