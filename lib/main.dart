@@ -32,6 +32,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _textFieldKey = GlobalKey();
 
+  double _pinchScale = 1.0;
+  double _basePinchScale = 1.0;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -50,6 +53,16 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   void _handleTextChanged(String text) {
     setState(() {
       // Rebuild so the style recomputes from the current controller text.
+    });
+  }
+
+  void _handleScaleStart(ScaleStartDetails details) {
+    _basePinchScale = _pinchScale;
+  }
+
+  void _handleScaleUpdate(ScaleUpdateDetails details) {
+    setState(() {
+      _pinchScale = math.max(0.5, math.min(_basePinchScale * details.scale, 3.0));
     });
   }
 
@@ -72,31 +85,36 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   }
 
   Widget _buildSharedTextField(TextStyle textStyle) {
-    return TextField(
-      key: _textFieldKey,
-      controller: _controller,
-      focusNode: _focusNode,
-      expands: true,
-      maxLines: null,
-      minLines: null,
-      keyboardType: TextInputType.multiline,
-      textAlign: TextAlign.center,
-      textAlignVertical: TextAlignVertical.center,
-      onTap: _handleTapToClear,
-      decoration: const InputDecoration(
-        border: InputBorder.none,
-        isCollapsed: true,
-        contentPadding: EdgeInsets.zero,
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onScaleStart: _handleScaleStart,
+      onScaleUpdate: _handleScaleUpdate,
+      child: TextField(
+        key: _textFieldKey,
+        controller: _controller,
+        focusNode: _focusNode,
+        expands: true,
+        maxLines: null,
+        minLines: null,
+        keyboardType: TextInputType.multiline,
+        textAlign: TextAlign.center,
+        textAlignVertical: TextAlignVertical.center,
+        onTap: _handleTapToClear,
+        decoration: const InputDecoration(
+          border: InputBorder.none,
+          isCollapsed: true,
+          contentPadding: EdgeInsets.zero,
+        ),
+        style: textStyle,
+        onChanged: _handleTextChanged,
       ),
-      style: textStyle,
-      onChanged: _handleTextChanged,
     );
   }
 
   @override
   Widget build(BuildContext context) {
     final bool keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final double fontSize = _fontSizeForText(_controller.text);
+    final double fontSize = _fontSizeForText(_controller.text) * _pinchScale;
 
     final TextStyle textStyle = TextStyle(
       fontSize: fontSize,
