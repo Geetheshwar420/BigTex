@@ -35,6 +35,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   final Map<int, Offset> _activePointers = <int, Offset>{};
 
   bool _isCenteredLayout = false;
+  double _fontWeightValue = 700.0;
   double _pinchScale = 1.0;
   double _basePinchScale = 1.0;
   double _pinchStartDistance = 0.0;
@@ -64,6 +65,31 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     setState(() {
       _isCenteredLayout = !_isCenteredLayout;
     });
+  }
+
+  FontWeight _fontWeightFromValue(double value) {
+    final int roundedValue = ((value / 100.0).round() * 100).clamp(100, 900);
+    switch (roundedValue) {
+      case 100:
+        return FontWeight.w100;
+      case 200:
+        return FontWeight.w200;
+      case 300:
+        return FontWeight.w300;
+      case 400:
+        return FontWeight.w400;
+      case 500:
+        return FontWeight.w500;
+      case 600:
+        return FontWeight.w600;
+      case 700:
+        return FontWeight.w700;
+      case 800:
+        return FontWeight.w800;
+      case 900:
+      default:
+        return FontWeight.w900;
+    }
   }
 
   double _distanceBetween(Offset first, Offset second) {
@@ -238,6 +264,23 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     );
   }
 
+  Widget _buildBoldnessSlider() {
+    return RotatedBox(
+      quarterTurns: 3,
+      child: Slider(
+        value: _fontWeightValue,
+        min: 100.0,
+        max: 900.0,
+        divisions: 8,
+        onChanged: (double value) {
+          setState(() {
+            _fontWeightValue = value;
+          });
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isLandscape = _isLandscape(context);
@@ -246,7 +289,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
     final TextStyle textStyle = TextStyle(
       fontSize: fontSize,
-      fontWeight: FontWeight.bold,
+      fontWeight: _fontWeightFromValue(_fontWeightValue),
       color: const Color(0xFF333333),
       letterSpacing: -2.0,
       height: 1.0,
@@ -298,18 +341,33 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
               ),
             ),
             Expanded(
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: 9 / 16,
-                  child: Container(
-                    padding: const EdgeInsets.all(20.0),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  Expanded(
+                    child: Center(
+                      child: AspectRatio(
+                        aspectRatio: 9 / 16,
+                        child: Container(
+                          padding: const EdgeInsets.all(20.0),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: _buildSharedTextField(textStyle, isLandscape: false),
+                        ),
+                      ),
                     ),
-                    child: _buildSharedTextField(textStyle, isLandscape: false),
                   ),
-                ),
+                  const SizedBox(width: 14.0),
+                  SizedBox(
+                    width: 44.0,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 18.0),
+                      child: _buildBoldnessSlider(),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
