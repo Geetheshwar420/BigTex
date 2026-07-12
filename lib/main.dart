@@ -32,9 +32,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   final TextEditingController _controller = TextEditingController(text: _qText);
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _textFieldKey = GlobalKey();
+  final Map<int, Offset> _activePointers = <int, Offset>{};
 
   double _pinchScale = 1.0;
   double _basePinchScale = 1.0;
+  double _pinchStartDistance = 0.0;
 
   @override
   void dispose() {
@@ -57,14 +59,61 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     });
   }
 
-  void _handleScaleStart(ScaleStartDetails details) {
+  double _distanceBetween(Offset first, Offset second) {
+    return (first - second).distance;
+  }
+
+  void _startPinchIfNeeded() {
+    if (_activePointers.length < 2) {
+      return;
+    }
+
+    final Iterator<Offset> iterator = _activePointers.values.iterator;
+    final Offset first = iterator.moveNext() ? iterator.current : Offset.zero;
+    final Offset second = iterator.moveNext() ? iterator.current : Offset.zero;
+    _pinchStartDistance = _distanceBetween(first, second);
     _basePinchScale = _pinchScale;
   }
 
-  void _handleScaleUpdate(ScaleUpdateDetails details) {
+  void _updatePinchScale() {
+    if (_activePointers.length < 2 || _pinchStartDistance <= 0.0) {
+      return;
+    }
+
+    final Iterator<Offset> iterator = _activePointers.values.iterator;
+    final Offset first = iterator.moveNext() ? iterator.current : Offset.zero;
+    final Offset second = iterator.moveNext() ? iterator.current : Offset.zero;
+    final double currentDistance = _distanceBetween(first, second);
+    if (currentDistance <= 0.0) {
+      return;
+    }
+
     setState(() {
-      _pinchScale = math.max(0.5, math.min(_basePinchScale * details.scale, 3.0));
+      _pinchScale = math.max(0.5, math.min(_basePinchScale * (currentDistance / _pinchStartDistance), 3.0));
     });
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointers[event.pointer] = event.localPosition;
+    if (_activePointers.length == 2) {
+      _startPinchIfNeeded();
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (!_activePointers.containsKey(event.pointer)) {
+      return;
+    }
+
+    _activePointers[event.pointer] = event.localPosition;
+    _updatePinchScale();
+  }
+
+  void _handlePointerEnd(PointerEvent event) {
+    _activePointers.remove(event.pointer);
+    if (_activePointers.length < 2) {
+      _pinchStartDistance = 0.0;
+    }
   }
 
   void _handleTapToClear() {
@@ -139,10 +188,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   }
 
   Widget _buildSharedTextField(TextStyle textStyle, {required bool isLandscape}) {
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.translucent,
-      onScaleStart: _handleScaleStart,
-      onScaleUpdate: isLandscape ? null : _handleScaleUpdate,
+      onPointerDown: isLandscape ? null : _handlePointerDown,
+      onPointerMove: isLandscape ? null : _handlePointerMove,
+      onPointerUp: isLandscape ? null : _handlePointerEnd,
+      onPointerCancel: isLandscape ? null : _handlePointerEnd,
       child: TextField(
         key: _textFieldKey,
         controller: _controller,
@@ -186,16 +237,23 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _promptPortraitMode,
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                child: Text(
-                  _controller.text,
-                  textAlign: TextAlign.center,
-                  style: textStyle,
+          child: Listener(
+            behavior: HitTestBehavior.translucent,
+            onPointerDown: _handlePointerDown,
+            onPointerMove: _handlePointerMove,
+            onPointerUp: _handlePointerEnd,
+            onPointerCancel: _handlePointerEnd,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _promptPortraitMode,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: Text(
+                    _controller.text,
+                    textAlign: TextAlign.center,
+                    style: textStyle,
+                  ),
                 ),
               ),
             ),
