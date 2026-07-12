@@ -29,11 +29,12 @@ class BigTextHomePage extends StatefulWidget {
 class _BigTextHomePageState extends State<BigTextHomePage> {
   static const String _qText = 'Type here...';
 
-  final TextEditingController _controller = TextEditingController(text: _qText);
+  final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   final GlobalKey _textFieldKey = GlobalKey();
   final Map<int, Offset> _activePointers = <int, Offset>{};
 
+  bool _isCenteredLayout = false;
   double _pinchScale = 1.0;
   double _basePinchScale = 1.0;
   double _pinchStartDistance = 0.0;
@@ -46,7 +47,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   }
 
   double _fontSizeForText(String text) {
-    if (text.isEmpty || text == _qText) {
+    if (text.isEmpty) {
       return 100.0;
     }
     final double size = 100.0 - 1.5 * text.length;
@@ -56,6 +57,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   void _handleTextChanged(String text) {
     setState(() {
       // Rebuild so the style recomputes from the current controller text.
+    });
+  }
+
+  void _toggleTextLayout() {
+    setState(() {
+      _isCenteredLayout = !_isCenteredLayout;
     });
   }
 
@@ -117,12 +124,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
   }
 
   void _handleTapToClear() {
-    // Evaluates case-insensitively.
-    if (_controller.text.toLowerCase() == _qText.toLowerCase()) {
-      _controller.clear();
-      // Force a UI rebuild so the font size updates immediately.
-      _handleTextChanged('');
-    }
+    _focusNode.requestFocus();
   }
 
   bool _isLandscape(BuildContext context) {
@@ -179,42 +181,59 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
     _focusNode.unfocus();
   }
 
-  void _handleFullScreenTap(bool isLandscape) {
-    if (isLandscape) {
-      return;
-    }
-    _focusNode.requestFocus();
-    _handleTapToClear(); // Clears text if they tap the outer edges.
-  }
-
   Widget _buildSharedTextField(TextStyle textStyle, {required bool isLandscape}) {
+    final bool centeredLayout = _isCenteredLayout;
+    final AlignmentGeometry alignment = centeredLayout ? Alignment.center : Alignment.topLeft;
+    final EdgeInsetsGeometry padding = centeredLayout
+        ? const EdgeInsets.all(32.0)
+        : const EdgeInsets.fromLTRB(28.0, 28.0, 28.0, 28.0);
+    final TextAlign textAlign = centeredLayout ? TextAlign.center : TextAlign.left;
+    final TextAlignVertical textAlignVertical = centeredLayout ? TextAlignVertical.center : TextAlignVertical.top;
+
     return Listener(
       behavior: HitTestBehavior.translucent,
       onPointerDown: isLandscape ? null : _handlePointerDown,
       onPointerMove: isLandscape ? null : _handlePointerMove,
       onPointerUp: isLandscape ? null : _handlePointerEnd,
       onPointerCancel: isLandscape ? null : _handlePointerEnd,
-      child: TextField(
-        key: _textFieldKey,
-        controller: _controller,
-        focusNode: _focusNode,
-        canRequestFocus: !isLandscape,
-        readOnly: isLandscape,
-        showCursor: !isLandscape,
-        expands: true,
-        maxLines: null,
-        minLines: null,
-        keyboardType: TextInputType.multiline,
-        textAlign: TextAlign.center,
-        textAlignVertical: TextAlignVertical.center,
-        onTap: isLandscape ? null : _handleTapToClear,
-        decoration: const InputDecoration(
-          border: InputBorder.none,
-          isCollapsed: true,
-          contentPadding: EdgeInsets.zero,
+      child: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onDoubleTap: _toggleTextLayout,
+        child: Align(
+          alignment: alignment,
+          child: Padding(
+            padding: padding,
+            child: TextField(
+              key: _textFieldKey,
+              controller: _controller,
+              focusNode: _focusNode,
+              canRequestFocus: !isLandscape,
+              readOnly: isLandscape,
+              showCursor: !isLandscape,
+              expands: true,
+              maxLines: null,
+              minLines: null,
+              keyboardType: TextInputType.multiline,
+              textAlign: textAlign,
+              textAlignVertical: textAlignVertical,
+              onTap: isLandscape ? null : _handleTapToClear,
+              decoration: const InputDecoration(
+                border: InputBorder.none,
+                isCollapsed: true,
+                contentPadding: EdgeInsets.zero,
+                hintText: _qText,
+                hintStyle: TextStyle(
+                  color: Color(0x40333333),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -2.0,
+                  height: 1.0,
+                ),
+              ),
+              style: textStyle,
+              onChanged: _handleTextChanged,
+            ),
+          ),
         ),
-        style: textStyle,
-        onChanged: _handleTextChanged,
       ),
     );
   }
@@ -237,26 +256,10 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: Listener(
-            behavior: HitTestBehavior.translucent,
-            onPointerDown: _handlePointerDown,
-            onPointerMove: _handlePointerMove,
-            onPointerUp: _handlePointerEnd,
-            onPointerCancel: _handlePointerEnd,
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _promptPortraitMode,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Text(
-                    _controller.text,
-                    textAlign: TextAlign.center,
-                    style: textStyle,
-                  ),
-                ),
-              ),
-            ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _promptPortraitMode,
+            child: _buildSharedTextField(textStyle, isLandscape: true),
           ),
         ),
       );
@@ -267,13 +270,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
       return Scaffold(
         backgroundColor: Colors.white,
         body: SafeArea(
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => _handleFullScreenTap(false),
-            child: SizedBox.expand(
-              child: _buildSharedTextField(textStyle, isLandscape: false),
-            ),
-          ),
+          child: _buildSharedTextField(textStyle, isLandscape: false),
         ),
       );
     }
@@ -305,7 +302,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
                 child: AspectRatio(
                   aspectRatio: 9 / 16,
                   child: Container(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(20.0),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12.0),
