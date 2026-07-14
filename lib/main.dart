@@ -218,10 +218,10 @@ class _BigTextHomePageState extends State<BigTextHomePage> {
 
     return Listener(
       behavior: HitTestBehavior.translucent,
-      onPointerDown: isLandscape ? null : _handlePointerDown,
-      onPointerMove: isLandscape ? null : _handlePointerMove,
-      onPointerUp: isLandscape ? null : _handlePointerEnd,
-      onPointerCancel: isLandscape ? null : _handlePointerEnd,
+      onPointerDown: _handlePointerDown,
+      onPointerMove: _handlePointerMove,
+      onPointerUp: _handlePointerEnd,
+      onPointerCancel: _handlePointerEnd,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onDoubleTap: _toggleTextLayout,
