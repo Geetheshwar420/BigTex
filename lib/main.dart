@@ -290,8 +290,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   Color _resolveTextColor({required bool keyboardVisible}) {
     if (_selectedColorIndex == 0) { // Default color behavior
-      if (_isDarkMode) return const Color(0xFF999999);
-      return keyboardVisible ? const Color(0xFF999999) : const Color(0xFF333333);
+      if (_isDarkMode) {
+        return Colors.white;
+      } else {
+        return Colors.black;
+      }
     }
     return _colorPalette[_selectedColorIndex];
   }
@@ -579,7 +582,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   Widget _buildVerticalSlider() {
     return Positioned(
-      left: 0,
+      right: 0,
       top: 0,
       bottom: 0,
       width: 44,
@@ -651,7 +654,15 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             builder: (context, constraints) {
               final fontSize = _responsiveFontSize(constraints.maxWidth);
               final textStyle = _buildTextStyle(fontSize, keyboardVisible: false);
-              return _buildTextField(textStyle, fontSize, isLandscape: false);
+              return GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onDoubleTap: () {
+                  setState(() {
+                    _textAlign = _textAlign == TextAlign.center ? TextAlign.left : TextAlign.center;
+                  });
+                },
+                child: _buildTextField(textStyle, fontSize, isLandscape: false),
+              );
             },
           ),
         ),
@@ -703,7 +714,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                   // 9:16 preview container
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 44.0, right: 8.0),
+                      padding: const EdgeInsets.only(left: 8.0, right: 44.0),
                       child: AspectRatio(
                         aspectRatio: 9 / 16,
                         child: RepaintBoundary(
@@ -758,8 +769,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                 child: ElevatedButton(
                   onPressed: _unfocusKeyboard,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2A2A2A),
-                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),

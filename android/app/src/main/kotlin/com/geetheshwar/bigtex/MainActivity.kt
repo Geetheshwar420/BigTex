@@ -1,4 +1,4 @@
-package com.example.big_text
+package com.geetheshwar.bigtex
 
 import android.content.Intent
 import android.provider.Settings
