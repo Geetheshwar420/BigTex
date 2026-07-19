@@ -1,8 +1,10 @@
 # Miscellaneous
+Text-Graphic Generator Implementation.md
 *.class
 *.log
 *.pyc
 *.swp
+.agent/
 .DS_Store
 .atom/
 .build/
