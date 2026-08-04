@@ -56,7 +56,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   bool _showColorPicker = false;
   bool _showPopularSentences = false;
   bool _isDarkMode = false;
-  TextAlign _textAlign = TextAlign.left;
+  Offset _textOffset = Offset.zero;
+  Size _lastFullScreenSize = Size.zero;
 
   // Font cycling (in hamburger menu)
   int _fontIndex = 0;
@@ -93,7 +94,6 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   // Popular sentences
   final List<String> _popularSentences = [
-    "None",
     "Hello World!",
     "Flutter is awesome.",
     "Keep calm and code on.",
@@ -157,7 +157,17 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   void _handlePointerMove(PointerMoveEvent e) {
     if (!_activePointers.containsKey(e.pointer)) return;
     _activePointers[e.pointer] = e.localPosition;
-    _updatePinchScale();
+
+    if (_activePointers.length == 1) {
+      if (MediaQuery.of(context).viewInsets.bottom == 0) {
+        _lastFullScreenSize = MediaQuery.of(context).size;
+        setState(() {
+          _textOffset += e.delta;
+        });
+      }
+    } else {
+      _updatePinchScale();
+    }
   }
 
   void _handlePointerEnd(PointerEvent e) {
@@ -178,29 +188,6 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   }
 
   void _handleTapToFocus() => _focusNode.requestFocus();
-
-  void _cycleAlignment() {
-    setState(() {
-      if (_textAlign == TextAlign.left) {
-        _textAlign = TextAlign.center;
-      } else if (_textAlign == TextAlign.center) {
-        _textAlign = TextAlign.right;
-      } else {
-        _textAlign = TextAlign.left;
-      }
-    });
-  }
-
-  IconData _alignmentIcon() {
-    switch (_textAlign) {
-      case TextAlign.center:
-        return Icons.format_align_center;
-      case TextAlign.right:
-        return Icons.format_align_right;
-      default:
-        return Icons.format_align_left;
-    }
-  }
 
   bool _isLandscape(BuildContext ctx) =>
       MediaQuery.of(ctx).orientation == Orientation.landscape;
@@ -291,9 +278,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   Color _resolveTextColor({required bool keyboardVisible}) {
     if (_selectedColorIndex == 0) { // Default color behavior
       if (_isDarkMode) {
-        return Colors.white;
+        return const Color(0xFF999999);
       } else {
-        return Colors.black;
+        return const Color(0xFF333333);
       }
     }
     return _colorPalette[_selectedColorIndex];
@@ -311,7 +298,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -2.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
       case 'Merriweather':
@@ -319,7 +306,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.1,
         );
       case 'Pacifico':
@@ -327,7 +314,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.w400,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.1,
         );
       case 'Oswald':
@@ -335,7 +322,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
       default:
@@ -343,7 +330,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -2.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
     }
@@ -354,7 +341,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
       color: const Color(0x40333333),
-      letterSpacing: -2.0,
+      letterSpacing: 0.0,
       height: 1.0,
     );
   }
@@ -362,13 +349,13 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   // ─── Shared TextField ───────────────────────────────────────
 
   Widget _buildTextField(TextStyle textStyle, double fontSize,
-      {required bool isLandscape}) {
-    final alignment = _textAlign == TextAlign.center
-        ? Alignment.center
-        : (_textAlign == TextAlign.right ? Alignment.topRight : Alignment.topLeft);
-    final verticalAlign = _textAlign == TextAlign.center
-        ? TextAlignVertical.center
-        : TextAlignVertical.top;
+      {required bool isLandscape, required BoxConstraints constraints}) {
+    double scaleX = 1.0;
+    double scaleY = 1.0;
+    if (_lastFullScreenSize.width > 0 && _lastFullScreenSize.height > 0) {
+      scaleX = constraints.maxWidth / _lastFullScreenSize.width;
+      scaleY = constraints.maxHeight / _lastFullScreenSize.height;
+    }
 
     Widget textField = TextField(
       key: _textFieldKey,
@@ -381,8 +368,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       maxLines: null,
       minLines: null,
       keyboardType: TextInputType.multiline,
-      textAlign: _textAlign,
-      textAlignVertical: verticalAlign,
+      textAlign: TextAlign.center,
+      textAlignVertical: TextAlignVertical.center,
       onTap: isLandscape ? null : _handleTapToFocus,
       decoration: InputDecoration(
         border: InputBorder.none,
@@ -420,11 +407,14 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       onPointerCancel: _handlePointerEnd,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        child: Align(
-          alignment: alignment,
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: textField,
+        child: Transform.translate(
+          offset: Offset(_textOffset.dx * scaleX, _textOffset.dy * scaleY),
+          child: Align(
+            alignment: Alignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: textField,
+            ),
           ),
         ),
       ),
@@ -465,12 +455,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             isActive: _isDarkMode,
             onTap: () => setState(() => _isDarkMode = !_isDarkMode),
           ),
-          // Alignment cycle
-          _toolbarIcon(
-            icon: _alignmentIcon(),
-            isActive: _textAlign != TextAlign.left,
-            onTap: _cycleAlignment,
-          ),
+          // Alignment removed per request
           // Export / share
           _toolbarIcon(
             icon: Icons.ios_share,
@@ -559,13 +544,13 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             padding: const EdgeInsets.symmetric(horizontal: 3.0),
             child: ActionChip(
               label: Text(
-                sentence == "None" ? "Clear" : sentence,
+                sentence,
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
               backgroundColor: const Color(0xFF2A2A2A),
               side: BorderSide.none,
               onPressed: () {
-                _controller.text = sentence == "None" ? "" : sentence;
+                _controller.text = sentence;
                 _controller.selection = TextSelection.fromPosition(
                   TextPosition(offset: _controller.text.length),
                 );
@@ -592,8 +577,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 2.5,
-              activeTrackColor: Colors.white54,
-              inactiveTrackColor: Colors.white24,
+              activeTrackColor: Colors.white24,
+              inactiveTrackColor: Colors.white54,
               thumbColor: Colors.white,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8.0),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
@@ -623,7 +608,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   Widget build(BuildContext context) {
     final isLandscape = _isLandscape(context);
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final bgColor = _isDarkMode ? const Color(0xFF000000) : Colors.white;
+    final bgColor = _isDarkMode ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
     // ── Landscape Mode ──
     if (isLandscape) {
@@ -637,7 +622,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: _promptPortraitMode,
-                child: _buildTextField(textStyle, fontSize, isLandscape: true),
+                child: _buildTextField(textStyle, fontSize, isLandscape: true, constraints: constraints),
               );
             },
           ),
@@ -656,12 +641,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
               final textStyle = _buildTextStyle(fontSize, keyboardVisible: false);
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onDoubleTap: () {
-                  setState(() {
-                    _textAlign = _textAlign == TextAlign.center ? TextAlign.left : TextAlign.center;
-                  });
-                },
-                child: _buildTextField(textStyle, fontSize, isLandscape: false),
+                child: _buildTextField(textStyle, fontSize, isLandscape: false, constraints: constraints),
               );
             },
           ),
@@ -679,12 +659,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 26),
-                    onPressed: _unfocusKeyboard,
-                  ),
                   IconButton(
                     icon: AnimatedIcon(
                       icon: AnimatedIcons.menu_close,
@@ -714,10 +690,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                   // 9:16 preview container
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 8.0, right: 44.0),
-                      child: AspectRatio(
-                        aspectRatio: 9 / 16,
-                        child: RepaintBoundary(
+                      padding: EdgeInsets.zero,
+                      child: ClipRect(
+                        child: AspectRatio(
+                          aspectRatio: 9 / 16,
+                          child: RepaintBoundary(
                           key: _repaintKey,
                           child: LayoutBuilder(
                             builder: (context, constraints) {
@@ -729,11 +706,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                                 decoration: BoxDecoration(
                                   color: _isDarkMode
                                       ? const Color(0xFF000000)
-                                      : Colors.white,
+                                      : const Color(0xFFFFFFFF),
                                   borderRadius: BorderRadius.circular(12.0),
                                 ),
                                 child: _buildTextField(textStyle, fontSize,
-                                    isLandscape: false),
+                                    isLandscape: false, constraints: constraints),
                               );
                             },
                           ),
@@ -741,8 +718,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                       ),
                     ),
                   ),
+                ),
 
-                  // Vertical slider on the left edge
+                // Vertical slider on the left edge
                   _buildVerticalSlider(),
 
                   // Hamburger menu panel (slides from right)
