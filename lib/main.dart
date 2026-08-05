@@ -720,7 +720,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                       padding: EdgeInsets.zero,
                       child: ClipRect(
                         child: AspectRatio(
-                          aspectRatio: 9 / 16,
+                          aspectRatio: (_lastFullScreenSize.width > 0 && _lastFullScreenSize.height > 0)
+                              ? (_lastFullScreenSize.width / _lastFullScreenSize.height)
+                              : (9 / 16),
                           child: RepaintBoundary(
                             key: _repaintKey,
                             child: Container(
