@@ -57,6 +57,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   bool _showPopularSentences = false;
   bool _isDarkMode = false;
   TextAlign _textAlign = TextAlign.left;
+  Offset _textOffset = Offset.zero;
+  Size _lastFullScreenSize = Size.zero;
 
   // Font cycling (in hamburger menu)
   int _fontIndex = 0;
@@ -93,7 +95,6 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   // Popular sentences
   final List<String> _popularSentences = [
-    "None",
     "Hello World!",
     "Flutter is awesome.",
     "Keep calm and code on.",
@@ -157,7 +158,17 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   void _handlePointerMove(PointerMoveEvent e) {
     if (!_activePointers.containsKey(e.pointer)) return;
     _activePointers[e.pointer] = e.localPosition;
-    _updatePinchScale();
+
+    if (_activePointers.length == 1) {
+      if (MediaQuery.of(context).viewInsets.bottom == 0) {
+        _lastFullScreenSize = MediaQuery.of(context).size;
+        setState(() {
+          _textOffset += e.delta;
+        });
+      }
+    } else {
+      _updatePinchScale();
+    }
   }
 
   void _handlePointerEnd(PointerEvent e) {
@@ -177,7 +188,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     });
   }
 
-  void _handleTapToFocus() => _focusNode.requestFocus();
+  void _handleTapToFocus() {
+    _focusNode.requestFocus();
+    if (_controller.text.isEmpty) {
+      _controller.selection = const TextSelection.collapsed(offset: 0);
+    }
+  }
 
   void _cycleAlignment() {
     setState(() {
@@ -282,7 +298,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   double _responsiveFontSizeEditing(double containerWidth) {
     final base = containerWidth * 0.12;
-    final size = base * _sliderScale;
+    final size = base * _sliderScale * _pinchScale;
     return math.max(8.0, size);
   }
 
@@ -291,9 +307,9 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   Color _resolveTextColor({required bool keyboardVisible}) {
     if (_selectedColorIndex == 0) { // Default color behavior
       if (_isDarkMode) {
-        return Colors.white;
+        return const Color(0xFF999999);
       } else {
-        return Colors.black;
+        return const Color(0xFF333333);
       }
     }
     return _colorPalette[_selectedColorIndex];
@@ -311,7 +327,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -2.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
       case 'Merriweather':
@@ -319,7 +335,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.1,
         );
       case 'Pacifico':
@@ -327,7 +343,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.w400,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.1,
         );
       case 'Oswald':
@@ -335,7 +351,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -1.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
       default:
@@ -343,18 +359,19 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: color,
-          letterSpacing: -2.0,
+          letterSpacing: 0.0,
           height: 1.0,
         );
     }
   }
 
   TextStyle _buildHintStyle(double fontSize) {
+    final hintColor = _isDarkMode ? const Color(0x60FFFFFF) : const Color(0x40333333);
     return GoogleFonts.atkinsonHyperlegible(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
-      color: const Color(0x40333333),
-      letterSpacing: -2.0,
+      color: hintColor,
+      letterSpacing: 0.0,
       height: 1.0,
     );
   }
@@ -363,13 +380,6 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   Widget _buildTextField(TextStyle textStyle, double fontSize,
       {required bool isLandscape}) {
-    final alignment = _textAlign == TextAlign.center
-        ? Alignment.center
-        : (_textAlign == TextAlign.right ? Alignment.topRight : Alignment.topLeft);
-    final verticalAlign = _textAlign == TextAlign.center
-        ? TextAlignVertical.center
-        : TextAlignVertical.top;
-
     Widget textField = TextField(
       key: _textFieldKey,
       controller: _controller,
@@ -382,7 +392,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       minLines: null,
       keyboardType: TextInputType.multiline,
       textAlign: _textAlign,
-      textAlignVertical: verticalAlign,
+      textAlignVertical: TextAlignVertical.top,
       onTap: isLandscape ? null : _handleTapToFocus,
       decoration: InputDecoration(
         border: InputBorder.none,
@@ -420,11 +430,14 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       onPointerCancel: _handlePointerEnd,
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        child: Align(
-          alignment: alignment,
-          child: Padding(
-            padding: const EdgeInsets.all(28.0),
-            child: textField,
+        child: Transform.translate(
+          offset: _textOffset,
+          child: Align(
+            alignment: Alignment.center,
+            child: Padding(
+              padding: const EdgeInsets.all(28.0),
+              child: textField,
+            ),
           ),
         ),
       ),
@@ -559,13 +572,13 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             padding: const EdgeInsets.symmetric(horizontal: 3.0),
             child: ActionChip(
               label: Text(
-                sentence == "None" ? "Clear" : sentence,
+                sentence,
                 style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
               backgroundColor: const Color(0xFF2A2A2A),
               side: BorderSide.none,
               onPressed: () {
-                _controller.text = sentence == "None" ? "" : sentence;
+                _controller.text = sentence;
                 _controller.selection = TextSelection.fromPosition(
                   TextPosition(offset: _controller.text.length),
                 );
@@ -592,8 +605,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 2.5,
-              activeTrackColor: Colors.white54,
-              inactiveTrackColor: Colors.white24,
+              activeTrackColor: Colors.white24,
+              inactiveTrackColor: Colors.white54,
               thumbColor: Colors.white,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8.0),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 16.0),
@@ -623,7 +636,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   Widget build(BuildContext context) {
     final isLandscape = _isLandscape(context);
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
-    final bgColor = _isDarkMode ? const Color(0xFF000000) : Colors.white;
+    final bgColor = _isDarkMode ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
 
     // ── Landscape Mode ──
     if (isLandscape) {
@@ -652,15 +665,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              _lastFullScreenSize = constraints.biggest;
               final fontSize = _responsiveFontSize(constraints.maxWidth);
               final textStyle = _buildTextStyle(fontSize, keyboardVisible: false);
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onDoubleTap: () {
-                  setState(() {
-                    _textAlign = _textAlign == TextAlign.center ? TextAlign.left : TextAlign.center;
-                  });
-                },
                 child: _buildTextField(textStyle, fontSize, isLandscape: false),
               );
             },
@@ -679,28 +688,22 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white, size: 26),
-                    onPressed: _unfocusKeyboard,
-                  ),
-                  IconButton(
-                    icon: AnimatedIcon(
-                      icon: AnimatedIcons.menu_close,
-                      progress: _menuIconController,
+                    icon: Icon(
+                      _isMenuOpen ? Icons.check : Icons.menu,
                       color: Colors.white,
                       size: 26,
                     ),
                     onPressed: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                        if (_isMenuOpen) {
-                          _menuIconController.forward();
-                        } else {
-                          _menuIconController.reverse();
-                        }
-                      });
+                      if (_isMenuOpen) {
+                        _unfocusKeyboard();
+                      } else {
+                        setState(() {
+                          _isMenuOpen = true;
+                        });
+                      }
                     },
                   ),
                 ],
@@ -714,28 +717,49 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                   // 9:16 preview container
                   Center(
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 8.0, right: 44.0),
-                      child: AspectRatio(
-                        aspectRatio: 9 / 16,
-                        child: RepaintBoundary(
-                          key: _repaintKey,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final fontSize =
-                                  _responsiveFontSizeEditing(constraints.maxWidth);
-                              final textStyle =
-                                  _buildTextStyle(fontSize, keyboardVisible: true);
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: _isDarkMode
-                                      ? const Color(0xFF000000)
-                                      : Colors.white,
-                                  borderRadius: BorderRadius.circular(12.0),
+                      padding: EdgeInsets.zero,
+                      child: ClipRect(
+                        child: AspectRatio(
+                          aspectRatio: (_lastFullScreenSize.width > 0 && _lastFullScreenSize.height > 0)
+                              ? (_lastFullScreenSize.width / _lastFullScreenSize.height)
+                              : (9 / 16),
+                          child: RepaintBoundary(
+                            key: _repaintKey,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _isDarkMode
+                                    ? const Color(0xFF000000)
+                                    : const Color(0xFFFFFFFF),
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SizedBox(
+                                  width: _lastFullScreenSize.width > 0
+                                      ? _lastFullScreenSize.width
+                                      : MediaQuery.of(context).size.width,
+                                  height: _lastFullScreenSize.height > 0
+                                      ? _lastFullScreenSize.height
+                                      : MediaQuery.of(context).size.height,
+                                  child: _buildTextField(
+                                    _buildTextStyle(
+                                      _responsiveFontSize(
+                                        _lastFullScreenSize.width > 0
+                                            ? _lastFullScreenSize.width
+                                            : MediaQuery.of(context).size.width,
+                                      ),
+                                      keyboardVisible: true,
+                                    ),
+                                    _responsiveFontSize(
+                                      _lastFullScreenSize.width > 0
+                                          ? _lastFullScreenSize.width
+                                          : MediaQuery.of(context).size.width,
+                                    ),
+                                    isLandscape: false,
+                                  ),
                                 ),
-                                child: _buildTextField(textStyle, fontSize,
-                                    isLandscape: false),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -760,28 +784,29 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             // Icon toolbar (only visible when hamburger menu is toggled ON)
             if (_isMenuOpen) _buildIconToolbar(),
 
-            // Done button at the bottom (always visible)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: _unfocusKeyboard,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+            // Done button at the bottom (only visible when hamburger menu is inactive)
+            if (!_isMenuOpen)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _unfocusKeyboard,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    child: const Text(
+                      'Done',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
