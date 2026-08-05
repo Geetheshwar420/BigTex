@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigTex - Legal & Policies</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-color: #38bdf8;
+            --border-color: #334155;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            margin: 0;
+            padding: 40px 16px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: 800;
+            color: var(--accent-color);
+            letter-spacing: -1px;
+            margin-bottom: 8px;
+        }
+
+        .tagline {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            margin-bottom: 36px;
+        }
+
+        .card-grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 480px) {
+            .card-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            text-decoration: none;
+            color: var(--text-main);
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-color);
+            box-shadow: 0 10px 20px -5px rgba(56, 189, 248, 0.2);
+        }
+
+        .card-icon {
+            font-size: 2.5rem;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .card-desc {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+        }
+
+        footer {
+            margin-top: 40px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">BigTex</div>
+        <div class="tagline">Legal Documents & Policy Portal</div>
+
+        <div class="card-grid">
+            <a href="privacy_policy.html" class="card">
+                <div class="card-icon">🔒</div>
+                <div class="card-title">Privacy Policy</div>
+                <div class="card-desc">Read how BigTex protects your data and privacy offline.</div>
+            </a>
+            <a href="terms_and_conditions.html" class="card">
+                <div class="card-icon">📜</div>
+                <div class="card-title">Terms & Conditions</div>
+                <div class="card-desc">Review the terms of service for using BigTex.</div>
+            </a>
+        </div>
+
+        <footer>
+            &copy; 2026 BigTex. All rights reserved.
+        </footer>
+    </div>
+</body>
+</html>
