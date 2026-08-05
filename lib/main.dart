@@ -9,10 +9,18 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const BigTextApp());
+}
+
+enum AppInitState {
+  loading,
+  error,
+  requiresAcceptance,
+  accepted,
 }
 
 class BigTextApp extends StatelessWidget {
@@ -74,7 +82,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   int _selectedColorIndex = 0;
   static const List<Color> _colorPalette = [
     Colors.white,
-    Color(0xFF999999),
+    Color(0xFFBBBBBB),
     Color(0xFF333333),
     Colors.red,
     Colors.orange,
@@ -93,16 +101,72 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   // Color presets for hamburger menu
   String _selectedColorPreset = 'Default';
 
+  // App Initialization state
+  AppInitState _initState = AppInitState.loading;
+  String? _initErrorMessage;
+
+  static const String _privacyPolicyContent = '''
+BigTex Privacy Policy
+Last updated: August 5, 2026
+
+1. DATA COLLECTION & PROCESSING
+BigTex is built as an offline-first, local text banner and graphic utility application. We do NOT collect, harvest, transmit, or store any personal data, accounts, email addresses, or phone numbers on any remote servers.
+
+2. LOCAL DEVICE STORAGE & USER CONTENT
+• Text Input: Text created or typed within BigTex remains strictly in device memory and is never uploaded to any remote database.
+• Exported Graphics & Images: When you export or share a banner graphic, the resulting image is temporarily saved to your local device directory using your device's native sharing capabilities.
+• App Preferences: Your visual theme preferences (e.g., Dark Mode, colors, font choices, terms acceptance) are saved locally on your device via secure system storage.
+
+3. DEVICE PERMISSIONS
+BigTex may request basic system permissions solely to perform user-requested actions:
+• Storage / Photo Library: Required only when saving or exporting custom text graphics to your device's gallery or file system.
+
+4. THIRD-PARTY SERVICES
+BigTex operates locally and does not integrate external advertising networks or invasive user analytics software.
+
+5. CHILDREN'S PRIVACY
+Because BigTex does not collect any personal data, our application is safe for users of all ages, including children under 13.
+
+6. CONTACT US
+If you have any questions regarding this Privacy Policy or BigTex's privacy practices, please contact us at:
+Email: nareshkumark331@gmail.com
+''';
+
+  static const String _termsContent = '''
+BigTex Terms & Conditions
+Last updated: August 5, 2026
+
+1. AGREEMENT TO TERMS
+By accessing or using the BigTex mobile application ("Service"), you agree to be bound by these Terms. If you disagree with any part of the terms, then you may not access the Service.
+
+2. INTELLECTUAL PROPERTY
+The Service and its original content, features, and functionality are and will remain the exclusive property of BigTex Team and its licensors. The Service is protected by copyright, trademark, and other laws.
+
+3. PROHIBITED USES
+You agree not to use the Service:
+• In any way that violates any applicable national or international law or regulation.
+• To transmit, or procure the sending of, any advertising or promotional material without our prior written consent.
+• To impersonate or attempt to impersonate the Company, a Company employee, another user, or any other person or entity.
+
+4. LIMITATION OF LIABILITY
+In no event shall BigTex Team, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages resulting from your access to or use of or inability to access or use the Service.
+
+5. DISCLAIMER
+Your use of the Service is at your sole risk. The Service is provided on an "AS IS" and "AS AVAILABLE" basis without warranties of any kind.
+
+6. GOVERNING LAW
+These Terms shall be governed and construed in accordance with applicable laws, without regard to conflict of law provisions.
+
+7. CONTACT US
+If you have any questions about these Terms, please contact us at:
+Email: nareshkumark331@gmail.com
+''';
+
   // Popular sentences
   final List<String> _popularSentences = [
-    "Hello World!",
-    "Flutter is awesome.",
-    "Keep calm and code on.",
-    "You got this!",
-    "Dream big.",
-    "Stay creative.",
-    "Make it happen.",
-    "Less is more.",
+    "Cup of Coffee",
+    "Can I have ur num?",
+    "Silence Please",
   ];
 
   @override
@@ -111,6 +175,104 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     _menuIconController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
+    );
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    setState(() {
+      _initState = AppInitState.loading;
+      _initErrorMessage = null;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final hasAccepted = prefs.getBool('has_accepted_terms') ?? false;
+
+      if (!mounted) return;
+
+      setState(() {
+        if (hasAccepted) {
+          _initState = AppInitState.accepted;
+        } else {
+          _initState = AppInitState.requiresAcceptance;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _initState = AppInitState.error;
+        _initErrorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _acceptTerms() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('has_accepted_terms', true);
+      if (!mounted) return;
+      setState(() {
+        _initState = AppInitState.accepted;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save acceptance: $e. Please try again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  void _showDocumentViewer(String title, String content) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: const Color(0xFF0F172A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (_, scrollController) => Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                border: Border(bottom: BorderSide(color: Color(0xFF334155))),
+              ),
+              child: Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white70),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: SingleChildScrollView(
+                controller: scrollController,
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  content,
+                  style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 14, height: 1.6),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -285,13 +447,13 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   // ─── Responsive Font Size ───────────────────────────────────
 
   double _responsiveFontSize(double containerWidth) {
-    final base = containerWidth * 0.12;
+    final base = containerWidth * 0.24;
     final size = base * _sliderScale * _pinchScale;
-    return math.max(8.0, size); // guard: never let fontSize be 0
+    return math.max(8.0, size);
   }
 
   double _responsiveFontSizeLandscape(double containerWidth) {
-    final base = containerWidth * 0.06;
+    final base = containerWidth * 0.12;
     final size = base * _sliderScale * _pinchScale;
     return math.max(8.0, size);
   }
@@ -307,7 +469,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   Color _resolveTextColor({required bool keyboardVisible}) {
     if (_selectedColorIndex == 0) { // Default color behavior
       if (_isDarkMode) {
-        return const Color(0xFF999999);
+        return const Color(0xFFBBBBBB);
       } else {
         return const Color(0xFF333333);
       }
@@ -630,10 +792,191 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     return const SizedBox.shrink(); // Side panel removed per user request
   }
 
-  // ─── Build ──────────────────────────────────────────────────
+  Widget _buildLoadingScreen() {
+    return const Scaffold(
+      backgroundColor: Color(0xFF0F172A),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(color: Color(0xFF38BDF8)),
+            SizedBox(height: 20),
+            Text(
+              'Initializing BigTex...',
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 60),
+              const SizedBox(height: 16),
+              const Text(
+                'Initialization Error',
+                style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _initErrorMessage ?? 'Failed to load user preferences.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _initializeApp,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF38BDF8),
+                  foregroundColor: const Color(0xFF0F172A),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAcceptanceScreen() {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 500),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: const Color(0xFF334155)),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black45,
+                    blurRadius: 20,
+                    offset: Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: Color(0x1F38BDF8),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.shield_outlined, color: Color(0xFF38BDF8), size: 40),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Welcome to BigTex',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please review and acknowledge our Terms of Service & Privacy Policy before using the application.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // Document Action Buttons
+                  OutlinedButton.icon(
+                    onPressed: () => _showDocumentViewer('Privacy Policy', _privacyPolicyContent),
+                    icon: const Icon(Icons.privacy_tip_outlined, color: Color(0xFF38BDF8)),
+                    label: const Text('Read Privacy Policy', style: TextStyle(color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Color(0xFF334155)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: () => _showDocumentViewer('Terms of Service', _termsContent),
+                    icon: const Icon(Icons.description_outlined, color: Color(0xFF38BDF8)),
+                    label: const Text('Read Terms of Service', style: TextStyle(color: Colors.white)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Color(0xFF334155)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+                  const Text(
+                    'By tapping "I Agree & Continue", you confirm that you have read and agree to the Terms of Service and Privacy Policy.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
+                  ),
+                  const SizedBox(height: 16),
+
+                  ElevatedButton(
+                    onPressed: _acceptTerms,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF38BDF8),
+                      foregroundColor: const Color(0xFF0F172A),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text(
+                      'I Agree & Continue',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Build Dispatcher ───────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
+    switch (_initState) {
+      case AppInitState.loading:
+        return _buildLoadingScreen();
+      case AppInitState.error:
+        return _buildErrorScreen();
+      case AppInitState.requiresAcceptance:
+        return _buildAcceptanceScreen();
+      case AppInitState.accepted:
+        return _buildMainEditorScaffold(context);
+    }
+  }
+
+  Widget _buildMainEditorScaffold(BuildContext context) {
     final isLandscape = _isLandscape(context);
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final bgColor = _isDarkMode ? const Color(0xFF000000) : const Color(0xFFFFFFFF);
