@@ -56,6 +56,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   bool _showColorPicker = false;
   bool _showPopularSentences = false;
   bool _isDarkMode = false;
+  TextAlign _textAlign = TextAlign.left;
   Offset _textOffset = Offset.zero;
   Size _lastFullScreenSize = Size.zero;
 
@@ -194,6 +195,29 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     }
   }
 
+  void _cycleAlignment() {
+    setState(() {
+      if (_textAlign == TextAlign.left) {
+        _textAlign = TextAlign.center;
+      } else if (_textAlign == TextAlign.center) {
+        _textAlign = TextAlign.right;
+      } else {
+        _textAlign = TextAlign.left;
+      }
+    });
+  }
+
+  IconData _alignmentIcon() {
+    switch (_textAlign) {
+      case TextAlign.center:
+        return Icons.format_align_center;
+      case TextAlign.right:
+        return Icons.format_align_right;
+      default:
+        return Icons.format_align_left;
+    }
+  }
+
   bool _isLandscape(BuildContext ctx) =>
       MediaQuery.of(ctx).orientation == Orientation.landscape;
 
@@ -274,7 +298,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
 
   double _responsiveFontSizeEditing(double containerWidth) {
     final base = containerWidth * 0.12;
-    final size = base * _sliderScale;
+    final size = base * _sliderScale * _pinchScale;
     return math.max(8.0, size);
   }
 
@@ -342,10 +366,11 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   }
 
   TextStyle _buildHintStyle(double fontSize) {
+    final hintColor = _isDarkMode ? const Color(0x60FFFFFF) : const Color(0x40333333);
     return GoogleFonts.atkinsonHyperlegible(
       fontSize: fontSize,
       fontWeight: FontWeight.bold,
-      color: const Color(0x40333333),
+      color: hintColor,
       letterSpacing: 0.0,
       height: 1.0,
     );
@@ -354,14 +379,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   // ─── Shared TextField ───────────────────────────────────────
 
   Widget _buildTextField(TextStyle textStyle, double fontSize,
-      {required bool isLandscape, required BoxConstraints constraints}) {
-    double scaleX = 1.0;
-    double scaleY = 1.0;
-    if (_lastFullScreenSize.width > 0 && _lastFullScreenSize.height > 0) {
-      scaleX = constraints.maxWidth / _lastFullScreenSize.width;
-      scaleY = constraints.maxHeight / _lastFullScreenSize.height;
-    }
-
+      {required bool isLandscape}) {
     Widget textField = TextField(
       key: _textFieldKey,
       controller: _controller,
@@ -373,7 +391,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       maxLines: null,
       minLines: null,
       keyboardType: TextInputType.multiline,
-      textAlign: TextAlign.left,
+      textAlign: _textAlign,
       textAlignVertical: TextAlignVertical.top,
       onTap: isLandscape ? null : _handleTapToFocus,
       decoration: InputDecoration(
@@ -413,7 +431,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       child: GestureDetector(
         behavior: HitTestBehavior.translucent,
         child: Transform.translate(
-          offset: Offset(_textOffset.dx * scaleX, _textOffset.dy * scaleY),
+          offset: _textOffset,
           child: Align(
             alignment: Alignment.center,
             child: Padding(
@@ -460,7 +478,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             isActive: _isDarkMode,
             onTap: () => setState(() => _isDarkMode = !_isDarkMode),
           ),
-          // Alignment removed per request
+          // Alignment cycle
+          _toolbarIcon(
+            icon: _alignmentIcon(),
+            isActive: _textAlign != TextAlign.left,
+            onTap: _cycleAlignment,
+          ),
           // Export / share
           _toolbarIcon(
             icon: Icons.ios_share,
@@ -627,7 +650,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
                 onTap: _promptPortraitMode,
-                child: _buildTextField(textStyle, fontSize, isLandscape: true, constraints: constraints),
+                child: _buildTextField(textStyle, fontSize, isLandscape: true),
               );
             },
           ),
@@ -642,11 +665,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              _lastFullScreenSize = constraints.biggest;
               final fontSize = _responsiveFontSize(constraints.maxWidth);
               final textStyle = _buildTextStyle(fontSize, keyboardVisible: false);
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
-                child: _buildTextField(textStyle, fontSize, isLandscape: false, constraints: constraints),
+                child: _buildTextField(textStyle, fontSize, isLandscape: false),
               );
             },
           ),
@@ -667,21 +691,19 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   IconButton(
-                    icon: AnimatedIcon(
-                      icon: AnimatedIcons.menu_close,
-                      progress: _menuIconController,
+                    icon: Icon(
+                      _isMenuOpen ? Icons.check : Icons.menu,
                       color: Colors.white,
                       size: 26,
                     ),
                     onPressed: () {
-                      setState(() {
-                        _isMenuOpen = !_isMenuOpen;
-                        if (_isMenuOpen) {
-                          _menuIconController.forward();
-                        } else {
-                          _menuIconController.reverse();
-                        }
-                      });
+                      if (_isMenuOpen) {
+                        _unfocusKeyboard();
+                      } else {
+                        setState(() {
+                          _isMenuOpen = true;
+                        });
+                      }
                     },
                   ),
                 ],
@@ -700,32 +722,49 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
                         child: AspectRatio(
                           aspectRatio: 9 / 16,
                           child: RepaintBoundary(
-                          key: _repaintKey,
-                          child: LayoutBuilder(
-                            builder: (context, constraints) {
-                              final fontSize =
-                                  _responsiveFontSizeEditing(constraints.maxWidth);
-                              final textStyle =
-                                  _buildTextStyle(fontSize, keyboardVisible: true);
-                              return Container(
-                                decoration: BoxDecoration(
-                                  color: _isDarkMode
-                                      ? const Color(0xFF000000)
-                                      : const Color(0xFFFFFFFF),
-                                  borderRadius: BorderRadius.circular(12.0),
+                            key: _repaintKey,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _isDarkMode
+                                    ? const Color(0xFF000000)
+                                    : const Color(0xFFFFFFFF),
+                                borderRadius: BorderRadius.circular(12.0),
+                              ),
+                              child: FittedBox(
+                                fit: BoxFit.contain,
+                                child: SizedBox(
+                                  width: _lastFullScreenSize.width > 0
+                                      ? _lastFullScreenSize.width
+                                      : MediaQuery.of(context).size.width,
+                                  height: _lastFullScreenSize.height > 0
+                                      ? _lastFullScreenSize.height
+                                      : MediaQuery.of(context).size.height,
+                                  child: _buildTextField(
+                                    _buildTextStyle(
+                                      _responsiveFontSize(
+                                        _lastFullScreenSize.width > 0
+                                            ? _lastFullScreenSize.width
+                                            : MediaQuery.of(context).size.width,
+                                      ),
+                                      keyboardVisible: true,
+                                    ),
+                                    _responsiveFontSize(
+                                      _lastFullScreenSize.width > 0
+                                          ? _lastFullScreenSize.width
+                                          : MediaQuery.of(context).size.width,
+                                    ),
+                                    isLandscape: false,
+                                  ),
                                 ),
-                                child: _buildTextField(textStyle, fontSize,
-                                    isLandscape: false, constraints: constraints),
-                              );
-                            },
+                              ),
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
 
-                // Vertical slider on the left edge
+                  // Vertical slider on the left edge
                   _buildVerticalSlider(),
 
                   // Hamburger menu panel (slides from right)
@@ -743,28 +782,29 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
             // Icon toolbar (only visible when hamburger menu is toggled ON)
             if (_isMenuOpen) _buildIconToolbar(),
 
-            // Done button at the bottom (always visible)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: _unfocusKeyboard,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+            // Done button at the bottom (only visible when hamburger menu is inactive)
+            if (!_isMenuOpen)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 44,
+                  child: ElevatedButton(
+                    onPressed: _unfocusKeyboard,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'Done',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    child: const Text(
+                      'Done',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
               ),
-            ),
           ],
         ),
       ),
