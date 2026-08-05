@@ -187,7 +187,12 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     });
   }
 
-  void _handleTapToFocus() => _focusNode.requestFocus();
+  void _handleTapToFocus() {
+    _focusNode.requestFocus();
+    if (_controller.text.isEmpty) {
+      _controller.selection = const TextSelection.collapsed(offset: 0);
+    }
+  }
 
   bool _isLandscape(BuildContext ctx) =>
       MediaQuery.of(ctx).orientation == Orientation.landscape;
@@ -368,8 +373,8 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
       maxLines: null,
       minLines: null,
       keyboardType: TextInputType.multiline,
-      textAlign: TextAlign.center,
-      textAlignVertical: TextAlignVertical.center,
+      textAlign: TextAlign.left,
+      textAlignVertical: TextAlignVertical.top,
       onTap: isLandscape ? null : _handleTapToFocus,
       decoration: InputDecoration(
         border: InputBorder.none,
