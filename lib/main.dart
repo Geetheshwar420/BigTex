@@ -82,7 +82,7 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   int _selectedColorIndex = 0;
   static const List<Color> _colorPalette = [
     Colors.white,
-    Color(0xFF999999),
+    Color(0xFFBBBBBB),
     Color(0xFF333333),
     Colors.red,
     Colors.orange,
@@ -164,14 +164,9 @@ Email: nareshkumark331@gmail.com
 
   // Popular sentences
   final List<String> _popularSentences = [
-    "Hello World!",
-    "Flutter is awesome.",
-    "Keep calm and code on.",
-    "You got this!",
-    "Dream big.",
-    "Stay creative.",
-    "Make it happen.",
-    "Less is more.",
+    "Cup of Coffee",
+    "Can I have ur num?",
+    "Silence Please",
   ];
 
   @override
@@ -474,7 +469,7 @@ Email: nareshkumark331@gmail.com
   Color _resolveTextColor({required bool keyboardVisible}) {
     if (_selectedColorIndex == 0) { // Default color behavior
       if (_isDarkMode) {
-        return const Color(0xFF999999);
+        return const Color(0xFFBBBBBB);
       } else {
         return const Color(0xFF333333);
       }
