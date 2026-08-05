@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,6 +112,103 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
     _menuIconController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkFirstLaunch();
+    });
+  }
+
+  Future<void> _checkFirstLaunch() async {
+    final prefs = await SharedPreferences.getInstance();
+    final hasAccepted = prefs.getBool('has_accepted_terms') ?? false;
+    if (!hasAccepted && mounted) {
+      _showAcknowledgementDialog();
+    }
+  }
+
+  Future<void> _showAcknowledgementDialog() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16.0),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.shield, color: Color(0xFF38BDF8), size: 28),
+            SizedBox(width: 10),
+            Text(
+              'Welcome to BigTex',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Before using BigTex, please acknowledge our Terms of Service & Privacy Policy.',
+                style: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+              ),
+              SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.lock_outline, color: Color(0xFF38BDF8), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '100% Offline & Private: No personal data or text input is ever collected or sent to remote servers.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.image_outlined, color: Color(0xFF38BDF8), size: 18),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Local Storage: Exported banner graphics are saved locally on your device.',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF38BDF8),
+                foregroundColor: const Color(0xFF0F172A),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('has_accepted_terms', true);
+                if (ctx.mounted) Navigator.of(ctx).pop();
+              },
+              child: const Text(
+                'I Agree & Continue',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -285,13 +383,13 @@ class _BigTextHomePageState extends State<BigTextHomePage> with SingleTickerProv
   // ─── Responsive Font Size ───────────────────────────────────
 
   double _responsiveFontSize(double containerWidth) {
-    final base = containerWidth * 0.12;
+    final base = containerWidth * 0.24;
     final size = base * _sliderScale * _pinchScale;
-    return math.max(8.0, size); // guard: never let fontSize be 0
+    return math.max(8.0, size);
   }
 
   double _responsiveFontSizeLandscape(double containerWidth) {
-    final base = containerWidth * 0.06;
+    final base = containerWidth * 0.12;
     final size = base * _sliderScale * _pinchScale;
     return math.max(8.0, size);
   }

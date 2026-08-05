@@ -66,5 +66,9 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>BigTex requires access to your photo library to save and export text graphics.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>BigTex requires permission to save generated text banner images to your photos.</string>
 </dict>
 </plist>
