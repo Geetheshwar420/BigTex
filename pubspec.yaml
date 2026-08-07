@@ -1,7 +1,7 @@
 name: bigtex
 description: A minimal single-file Flutter app demonstrating pinch-to-zoom text.
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.0+9
 
 environment:
   sdk: '>=2.17.0 <4.0.0'
