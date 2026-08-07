@@ -3,7 +3,7 @@
 ## 📱 App Information
 * **App Name:** BigTex - Big Text & Banners
 * **Subtitle:** Fullscreen Text & Marquee Sign
-* **Bundle Identifier:** `com.geetheshwar.bigtex`
+* **Bundle Identifier:** `BigTex.BigTex`
 * **SKU:** `bigtex-ios-01`
 * **Primary Category:** Utilities
 * **Secondary Category:** Graphics & Design
